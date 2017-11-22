@@ -102,6 +102,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+MEDIA_URL = 'media/'
+MEDIA_ROOT = 'hotel_project/media/'
 
 # INDICAMOS DONDE ESTAN NUESTROS ARCHIVOS ESTÁTICOS
 STATICFILES_DIRS = (

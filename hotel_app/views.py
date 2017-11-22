@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.utils.html import escape
 import datetime
 from datetime import timedelta
+from pprint import pprint
 
 # Create your views here.
 def index(request):
@@ -39,6 +40,7 @@ def index_reserve(request, id_estate):
     if request.method == 'GET':
         #messages = None
         estate = Estate.objects.get(id = id_estate)
+        print(estate.image)
         form = ResidentForm(initial={'name': 'Federico', 'surname': 'Palomero', 'email':'aldosivi@yahoo.com'})
         now = datetime.datetime.now
         context = {
@@ -50,33 +52,38 @@ def index_reserve(request, id_estate):
 
 
     if request.method == 'POST': #Cuando se envía la info para la reserva
-        #verificar si estan todos los días disponibles
         estate = Estate.objects.get(id=id_estate)
-        resident = Resident(name=request.POST['name'], surname=request.POST['surname'], email=request.POST['email'])
-        resident.save()
-        booking = Booking(date=datetime.datetime.now(), total_price=estate.price, resident=resident)
-        booking.save()
-        saveRangeDate(srtToDate(request.POST['dateFrom']), srtToDate(request.POST['dateTo']), booking, estate)
-        context = {
-            'booking': booking,
-            'e': estate
-        }
-
-        messages.success(request, 'Reserva concretada con éxito')
+        if(rentalDateIsAble(request.POST['dateFrom'], request.POST['dateTo'], estate)):
+            resident = Resident(name=request.POST['name'], surname=request.POST['surname'], email=request.POST['email'])
+            resident.save()
+            booking = Booking(date=datetime.datetime.now(), total_price=estate.price, resident=resident)
+            booking.save()
+            saveRangeDate(srtToDate(request.POST['dateFrom']), srtToDate(request.POST['dateTo']), booking, estate)
+            context = {
+                'booking': booking,
+                'e': estate
+            }
+            messages.success(request, 'Reserva concretada con éxito')
+        else:
+            messages.error(request, 'Rango de fechas no habilitado')
+            context = {
+                'e': estate
+            }
         return render(request, 'reserve/index.html', context)
 
 def saveRangeDate(dateFrom, dateTo, booking, estate):
     while(dateFrom <= dateTo):
-        rentalDate = RentalDate(date=dateFrom, booking=booking)
+        rentalDate = RentalDate.objects.create(date=dateFrom, booking=booking)
+        rentalDate.estate.add(estate)
         rentalDate.save()
         dateFrom = dateFrom + timedelta(days=1)
 
 def srtToDate(dateString):
     return datetime.datetime.strptime(dateString, "%Y-%m-%d").date()
 
-
-#def rentalDateEnable(dateFrom, dateTo, booking, estate):
-    #flag = True
-    #rentalDates = RentalDate.object.getAll()
-    #while(dateFrom.date() != dateTo.date()):
-    #    if()
+def rentalDateIsAble(dateFrom, dateTo, estate):
+    able = True
+    rentalDates = RentalDate.objects.filter(date__range=[dateFrom, dateTo], booking__isnull=False ).count()
+    if rentalDates != 0:
+        able = False
+    return able
